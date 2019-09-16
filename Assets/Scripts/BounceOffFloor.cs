@@ -4,23 +4,51 @@ using UnityEngine;
 
 public class BounceOffFloor : MonoBehaviour
 {
+    [SerializeField]
     private Rigidbody rb;
+    [SerializeField]
     private Vector3 v3Position;
+    [SerializeField]
     private Vector3 v3Velocity;
+    private Vector3 SavedVelocity;
     public enum ActivityType { Paused = 0, Active };
     public ActivityType Activity;
+    private ConstantForce constforce;
+
+    private TrailPauser trailscript = null;
 
     // Start is called before the first frame update
     void Start()
     {
-        rb = this.GetComponent<Rigidbody>();
+        Transform[] allChildren = this.GetComponentsInChildren<Transform>();
+        //foreach (Transform child in allChildren) print("Found child gameobject " + child.gameObject.name.ToString());
+
+        foreach (Transform child in allChildren)
+        {
+            if (trailscript == null)
+            {
+                if (child.gameObject.GetComponent<TrailPauser>() != null)
+                {
+                    trailscript = child.gameObject.GetComponent<TrailPauser>();
+                    //print("Found TrailPauser");
+                }
+
+            }
+        }
+
+
+        constforce = this.GetComponent<ConstantForce>();
         Activity = ActivityType.Active;
+        rb.velocity = v3Velocity;
     }
 
     // Update is called once per frame
     void Update()
     {
-
+        Vector3 forcevector;
+        forcevector = constforce.force;
+        constforce.force = new Vector3(-0.05f * this.transform.position.x,
+           forcevector.y, -0.15f * this.transform.position.z);
     }
 
 
@@ -29,13 +57,10 @@ public class BounceOffFloor : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
 
-        Vector3 v3Position;
-        v3Position = this.transform.position;
-
         Vector3 v3Velocity = rb.velocity;
 
-        print("Detected collision between " + this.name + " and " + other.name + "\n" +
-           "Position" + v3Position.ToString("F4") + " and " + "Velocity" + v3Velocity.ToString("F4"));
+        //  print("Detected collision between " + this.name + " and " + other.name + "\n" +
+        //     "Position" + v3Position.ToString("F4") + " and " + "Velocity" + v3Velocity.ToString("F4"));
 
         // Reverse the vertical (y-axis) velocity to simulate an elastic collisions
         float Vx = v3Velocity.x;
@@ -55,11 +80,18 @@ public class BounceOffFloor : MonoBehaviour
         {
             Activity = ActivityType.Active;
             rb.isKinematic = false;
-        } else
+            rb.velocity = SavedVelocity;
+            if (trailscript != null) trailscript.ResumeTrail();
+        }
+        else
         {
             Activity = ActivityType.Paused;
+            SavedVelocity = rb.velocity;
             rb.isKinematic = true;
+            if (trailscript != null) trailscript.PauseTrail();
+
+
         }
-           
+
     }
 }
